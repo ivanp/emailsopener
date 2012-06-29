@@ -1,14 +1,15 @@
 import csv
-from http.cookiejar import CookieJar
+from cookielib import CookieJar
 import json
 import os
 import random
 import re
-from urllib import request
-import urllib
-from urllib.error import HTTPError
-from urllib.request import Request
-from pyquery.pyquery import PyQuery
+import urllib, httplib
+#from urllib import request
+#import urllib
+#from urllib.error import HTTPError
+#from urllib.request import Request
+from pyquery import PyQuery
 from utils import serializeArray
 
 __author__ = 'dude'
@@ -31,7 +32,7 @@ for email in emails:
 
     #region AOL.COM
     if provider == 'aol.com':
-        print("Loggining into AOL ...")
+        print "Loggining into AOL ..."
         html = request.urlopen('http://mail.aol.com').read().decode()
 
         loginForm = PyQuery(html).find('#formCreds')
@@ -48,9 +49,9 @@ for email in emails:
             redirect = e.geturl()
 
         if not redirect:
-            print("Can't login into AOL.COM with: %s - %s" % (name, password))
+            print "Can't login into AOL.COM with: %s - %s" % (name, password) 
         else:
-            print("Logged in [Application PATH: %s ]. Collecting new messages ..." % redirect)
+            print "Logged in [Application PATH: %s ]. Collecting new messages ..." % redirect
 
             auth = cookie._cookies['.mail.aol.com']['/']['Auth'].value
             auth = dict(x.split(":") if len(x.split(":")) == 2 else (x, '') for x in auth.split("&"))
@@ -75,7 +76,7 @@ for email in emails:
 
                 newMessages = result[0]['folders'][0][6]
                 if newMessages:
-                    print('Found %s new messages. Marking them as opened ...' % newMessages)
+                    print 'Found %s new messages. Marking them as opened ...' % newMessages
 
                     ids = []
                     for message in rows:
@@ -118,7 +119,7 @@ for email in emails:
     #endregion
     #region HotMail
     elif provider == 'hotmail.com':
-        print("Loggining into HotMail ...", end="")
+        print "Loggining into HotMail ...", 
 
         html = request.urlopen('http://mail.live.com/').read().decode()
         ppft = re.search('<input type="hidden" name="PPFT" id="[^"]+" value="([^"]+)"', html).group(1)
@@ -138,12 +139,12 @@ for email in emails:
         #        cookie.clear(domain='.mail.live.com', path='/', name='KVC')
             cookie.clear(domain='.live.com', path='/', name='WLSSC')
 
-            print('Logged in. Redirecting to email inbox...', end="")
+            print 'Logged in. Redirecting to email inbox...', 
             nexturl = 'http://mail.live.com/default.aspx?rru=inbox'
             inboxURL = ''
             while nexturl:
                 try:
-                    print('.', end="")
+                    print '.', 
                     #                    print("\tRedirecting to %s" % nexturl)
                     req = request.urlopen(nexturl)
                     html = req.read().decode()
@@ -161,7 +162,7 @@ for email in emails:
             sessID = urllib.parse.unquote(cfg['SessionId'])
             authUser = urllib.parse.unquote(cfg['AuthUser'])
 
-            print('Fetching new messages list ... ', end="")
+            print 'Fetching new messages list ... ',
             get = {
                 'cnmn': 'Microsoft.Msn.Hotmail.Ui.Fpp.MailBox.GetInboxData',
                 'ptid': 0,
@@ -200,7 +201,7 @@ for email in emails:
                     '\|')) + '%22},null,%2200000000-0000-0000-0000-000000000001%22,true,%22' + urllib.parse.quote(
                     mailFrom) + '%22}&v=1'
 
-                print("\tOpening %s [ID:%s]..." % (mailFrom, mailID), end='')
+                print "\tOpening %s [ID:%s]..." % (mailFrom, mailID), 
                 req = Request(listURL, postData.encode())
                 req.add_header('X-Requested-With', 'XMLHttpRequest')
                 req.add_header('X-Fpp-Command', 0)
@@ -274,8 +275,7 @@ for email in emails:
                     if msg['flags']['isRead']:
                         continue
 
-                    print('\tOpening %s<%s>: %s... ' %
-                          (msg['from']['name'], msg['from']['email'], msg['subject']), end='')
+                    print '\tOpening %s<%s>: %s... ' % msg['from']['name'], msg['from']['email'], msg['subject'], 
 
                     mid = msg['mid']
                     post = '{"method":"FlagMessages","params":[{"fid":"Inbox","mid":["' + mid + '"],"setFlags":{"read":1},"enableRetry":true}]}'
@@ -292,7 +292,7 @@ for email in emails:
     #endregion
 
     elif provider == 'gmail.com':
-        print("Loggining into Gmail ... ", end='')
+        print "Loggining into Gmail ... ", 
 
         html = request.urlopen('https://mail.google.com/mail/').read().decode()
 
@@ -309,7 +309,7 @@ for email in emails:
         if html.find('name="application-url" content="https://mail.google.com/mail"') == -1:
             print("Can't login into Gmail.com with: %s - %s" % (name, password))
         else:
-            print('Logged in!', end=' ')
+            print 'Logged in!',
 
             html = request.urlopen('https://mail.google.com/mail/?ui=html&zy=c').read().decode()
 
