@@ -8,9 +8,12 @@ import re
 #from urllib import request
 #import urllib
 #from urllib.error import HTTPError
-#from urllib.request import Request
+#from urllib2.Request import Request
 import urllib
 import urllib2
+#from urlparse import urljoin
+#from urlparse import urlparse
+import urlparse
 from pyquery import PyQuery
 from utils import serializeArray
 
@@ -35,7 +38,7 @@ for email in emails:
     #region AOL.COM
     if provider == 'aol.com':
         print "Loggining into AOL ..."
-        html = urllib2.urlopen('http://mail.aol.com').read().decode()
+        html = urllib2.urlopen('http://mail.aol.com').read().decode('utf-8')
 
         loginForm = PyQuery(html).find('#formCreds')
         action = loginForm.attr("action")
@@ -60,7 +63,7 @@ for email in emails:
 
             RPCURL = 'http://mail.aol.com' + os.path.dirname(os.path.dirname(redirect)) + "/common/rpc/RPC.aspx?"
 
-            req = urllib2.request(RPCURL + urllib.urlencode({
+            req = urllib2.Request(RPCURL + urllib.urlencode({
                 'user': auth['uid'],
                 'transport': 'xmlhttp',
                 'r': random.randint(10000000000, 9000000000000),
@@ -71,7 +74,7 @@ for email in emails:
             )
             req.add_header('X-Requested-With', 'XMLHttpRequest')
 
-            jsonresult = urllib2.urlopen(req).read().decode()
+            jsonresult = urllib2.urlopen(req).read().decode('utf-8')
             result = json.loads(jsonresult)
             if result[0]['isSuccess']:
                 rows = result[0]['rows']
@@ -104,14 +107,14 @@ for email in emails:
                         ids = urllib.parse.quote(json.dumps(ids))
                         check = 'requests=%5B%7B%22messageAction%22%3A%22seen%22%2C%22folder%22%3A%22Inbox%22%2C%22uids%22%3A%7B%22Inbox%22%3A' + ids + '%7D%2C%22xuids%22%3A%7B%7D%2C%22checkUndo%22%3Afalse%2C%22screenName%22%3A%22phpduderu%22%2C%22isUndoAction%22%3Afalse%2C%22isSearchAction%22%3Afalse%2C%22action%22%3A%22MessageAction%22%7D%5D&automatic=false'
 
-                        req = urllib2.request(RPCURL + urllib.parse.urlencode({
+                        req = urllib2.Request(RPCURL + urllib.parse.urlencode({
                             'user': auth['uid'],
                             'transport': 'xmlhttp',
                             'a': 'MessageAction'
                         }), check.encode())
                         req.add_header('X-Requested-With', 'XMLHttpRequest')
 
-                        res = json.loads(urllib2.urlopen(req).read().decode())
+                        res = json.loads(urllib2.urlopen(req).read().decode('utf-8'))
                         print "Checking as readed ... %s" % 'Done' if res[0]['isSuccess'] else 'Error'
                 else:
                     print 'Not found new messages'
@@ -123,7 +126,7 @@ for email in emails:
     elif provider == 'hotmail.com':
         print "Loggining into HotMail ...", 
 
-        html = urllib2.urlopen('http://mail.live.com/').read().decode()
+        html = urllib2.urlopen('http://mail.live.com/').read().decode('utf-8')
         ppft = re.search('<input type="hidden" name="PPFT" id="[^"]+" value="([^"]+)"', html).group(1)
         action = re.search("var srf_uPost='([^']+)'", html).group(1)
 
@@ -133,7 +136,7 @@ for email in emails:
             'PPFT': ppft,
             'login': email,
             'passwd': password,
-            }).encode()).read().decode()
+            }).encode()).read().decode('utf-8')
 
         if html.find('replace("http://mail.live.com/default.aspx?rru=inbox")') == -1:
             print "Can't login into HotMail with: %s - %s" % (name, password)
@@ -149,16 +152,16 @@ for email in emails:
                     print '.', 
                     #                    print "\tRedirecting to %s" % nexturl
                     req = urllib2.urlopen(nexturl)
-                    html = req.read().decode()
+                    html = req.read().decode('utf-8')
                     inboxURL = req.url
                     nexturl = False
-                except HTTPError as e:
+                except urllib2.HTTPError as e:
                     print e.read()
-                    nexturl = urllib2.urljoin(nexturl, e.headers['location'])
+                    nexturl = urlparse.urljoin(nexturl, e.headers['location'])
 
             print "Done"
 
-            fppURL = urllib2.urljoin(inboxURL, '/mail/mail.fpp') + "?"
+            fppURL = urlparse.urljoin(inboxURL, '/mail/mail.fpp') + "?"
 
             cfg = dict(re.findall('(\w+)\s*:\s*"([^"]+)"', re.search('fppCfg:(\{.*?\})', html).group(1)))
             sessID = urllib.unquote(cfg['SessionId'])
@@ -175,14 +178,14 @@ for email in emails:
             listURL = fppURL + urllib.urlencode(get)
 
             mt = re.search('OptionsWriter.aspx\x3f(.*?)"', html).group(1)
-            mt = urllib.parse_qs(json.loads('"' + mt + '"'))['mt'][0]
+            mt = urlparse.parse_qs(json.loads('"' + mt + '"'))['mt'][0]
 
             postData = 'cn=Microsoft.Msn.Hotmail.Ui.Fpp.MailBox&mn=GetInboxData&d=true,false,true,{%2200000000-0000-0000-0000-000000000001%22,null,,FirstPage,5,1,null,null,null,Date,false,false,%22%22,null,-1,-1,false,Off,-1,null,null,true},false,null&v=1'
-            req = urllib2.request(listURL, postData.encode())
+            req = urllib2.Request(listURL, postData.encode())
             req.add_header('X-Requested-With', 'XMLHttpRequest')
             req.add_header('X-Fpp-Command', 0)
             req.add_header('Mt', mt)
-            lst = urllib2.urlopen(req).read().decode()
+            lst = urllib2.urlopen(req).read().decode('utf-8')
 
             lst = lst.replace('\\"', '"')
             lst = "".join(re.findall('<tr class="ia_hc[^>]+>.*?</tr>', lst))
@@ -204,11 +207,11 @@ for email in emails:
                     mailFrom) + '%22}&v=1'
 
                 print "\tOpening %s [ID:%s]..." % (mailFrom, mailID), 
-                req = urllib2.request(listURL, postData.encode())
+                req = urllib2.Request(listURL, postData.encode())
                 req.add_header('X-Requested-With', 'XMLHttpRequest')
                 req.add_header('X-Fpp-Command', 0)
                 req.add_header('Mt', mt)
-                res = urllib2.urlopen(req).read().decode()
+                res = urllib2.urlopen(req).read().decode('utf-8')
 
                 print 'Done'
 
@@ -218,7 +221,7 @@ for email in emails:
     elif provider == 'yahoo.com':
         print 'Loggining into yahoo ...'
 
-        html = urllib2.urlopen('http://mail.yahoo.com/').read().decode()
+        html = urllib2.urlopen('http://mail.yahoo.com/').read().decode('utf-8')
         loginForm = PyQuery(html).find('#login_form')
 
         action = loginForm.attr('action')
@@ -227,7 +230,7 @@ for email in emails:
         loginData['login'] = email
         loginData['passwd'] = password
 
-        html = urllib2.urlopen(action, urllib.urlencode(loginData).encode()).read().decode()
+        html = urllib2.urlopen(action, urllib.urlencode(loginData).encode()).read().decode('utf-8')
 
         if html.find('<meta http-equiv="Refresh" content="0;') == -1:
             print "Can't login into Yahoo with: %s - %s" % (name, password)
@@ -236,10 +239,10 @@ for email in emails:
 
             mailurl = re.search('url=(.*?)">', html).group(1)
 
-            html = urllib2.urlopen(mailurl).read().decode()
+            html = urllib2.urlopen(mailurl).read().decode('utf-8')
             wssid = re.search('wssid:"(.*?)"', html).group(1)
 
-            rpcurl = urllib2.urljoin(mailurl, '/ws/mail/v2.0/formrpc') + "?"
+            rpcurl = urlparse.urljoin(mailurl, '/ws/mail/v2.0/formrpc') + "?"
 
             result = urllib2.urlopen(rpcurl + urllib.urlencode({
                 'appid': 'YahooMailNeo',
@@ -247,7 +250,7 @@ for email in emails:
                 'o': 'json',
                 'resetMessengerUnseen': 'true',
                 'wssid': wssid
-            })).read().decode()
+            })).read().decode('utf-8')
 
             result = json.loads(result)
             newMessages = list(filter(lambda x: x['folderInfo']['name'] == 'Inbox', result['folder']))[0]['unread']
@@ -268,11 +271,11 @@ for email in emails:
                     'sortOrder': 'down',
                     'startInfo': 0,
                     'wssid': wssid
-                })).read().decode()
+                })).read().decode('utf-8')
 
                 result = json.loads(result)
 
-                rpcurl = urllib2.urljoin(mailurl, '/ws/mail/v2.0/jsonrpc') + "?"
+                rpcurl = urlparse.urljoin(mailurl, '/ws/mail/v2.0/jsonrpc') + "?"
                 for msg in result['messageInfo']:
                     if msg['flags']['isRead']:
                         continue
@@ -286,7 +289,7 @@ for email in emails:
                         'appid': 'YahooMailNeo',
                         'm': 'FlagMessages',
                         'wssid': wssid
-                    }), post.encode()).read().decode()
+                    }), post.encode()).read().decode('utf-8')
 
                     result = json.loads(result)
                     print 'Done!' if not result['error'] else ('Error: ' + result['error'])
@@ -296,7 +299,7 @@ for email in emails:
     elif provider == 'gmail.com':
         print "Loggining into Gmail ... ", 
 
-        html = urllib2.urlopen('https://mail.google.com/mail/').read().decode()
+        html = urllib2.urlopen('https://mail.google.com/mail/').read().decode('utf-8')
 
         pq = PyQuery(html).find('#gaia_loginform')
 
@@ -306,14 +309,14 @@ for email in emails:
         loginData['Email'] = email
 
         req = urllib2.urlopen(action, urllib.urlencode(loginData).encode())
-        html = req.read().decode()
+        html = req.read().decode('utf-8')
 
         if html.find('name="application-url" content="https://mail.google.com/mail"') == -1:
             print "Can't login into Gmail.com with: %s - %s" % (name, password)
         else:
             print 'Logged in!',
 
-            html = urllib2.urlopen('https://mail.google.com/mail/?ui=html&zy=c').read().decode()
+            html = urllib2.urlopen('https://mail.google.com/mail/?ui=html&zy=c').read().decode('utf-8')
 
             baseURL = PyQuery(html).find('base').attr('href')
 
@@ -339,4 +342,4 @@ for email in emails:
                 mids.append('redir=?&')
                 mids.append('bact=')
 
-                process = urllib2.urlopen(baseURL + "?" + submit, '&'.join(mids).encode()).read().decode()
+                process = urllib2.urlopen(baseURL + "?" + submit, '&'.join(mids).encode()).read().decode('utf-8')
